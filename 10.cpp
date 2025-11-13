@@ -1,24 +1,52 @@
 #include <iostream>
+#include <iomanip>
 #include <cmath>
+#include <vector>
 using namespace std;
 
-const double EPS = 1e-6;
-const int MAX_ITER = 100;
+pair<int,int> findMaxOffDiagonal(const vector<vector<double>>& A) {
+    int n = A.size(); double maxVal=0.0;
+    pair<int,int> indices={0,0};
+    for(int i=0;i<n;i++)
+        for(int j=i+1;j<n;j++)
+            if(fabs(A[i][j])>maxVal){ maxVal=fabs(A[i][j]); indices={i,j}; }
+    return indices;
+}
 
-double f1(double x, double y) { return x*x + y*y - 4; }
-double f2(double x, double y) { return x*y - 1; }
+void jacobiRotation(vector<vector<double>>& A) {
+    int n = A.size();
+    while(true){
+        auto [p,q] = findMaxOffDiagonal(A);
+        double apq = A[p][q], app = A[p][p], aqq = A[q][q];
+        double theta = 0.5 * atan2(2*apq, aqq-app);
+        double cosTheta = cos(theta), sinTheta = sin(theta);
+
+        for(int i=0;i<n;i++){
+            double aip=A[i][p], aiq=A[i][q];
+            A[i][p] = cosTheta*aip - sinTheta*aiq;
+            A[p][i] = A[i][p];
+            A[i][q] = sinTheta*aip + cosTheta*aiq;
+            A[q][i] = A[i][q];
+        }
+
+        A[p][p] = app*cosTheta*cosTheta - 2*apq*sinTheta*cosTheta + aqq*sinTheta*sinTheta;
+        A[q][q] = app*sinTheta*sinTheta + 2*apq*sinTheta*cosTheta + aqq*cosTheta*cosTheta;
+        A[p][q] = A[q][p] = 0.0;
+
+        if(fabs(apq)<1e-6) break;
+    }
+}
+
+void findEigenvalues(vector<vector<double>>& A, vector<double>& eigenvalues) {
+    jacobiRotation(A);
+    for(int i=0;i<A.size();i++) eigenvalues.push_back(A[i][i]);
+}
 
 int main() {
-    double x = 2.0, y = 0.5, dx, dy;
-    for (int i = 0; i < MAX_ITER; i++) {
-        double J[2][2] = { {2*x, 2*y}, {y, x} };
-        double F[2] = { -f1(x,y), -f2(x,y) };
-        double det = J[0][0]*J[1][1]-J[0][1]*J[1][0];
-        dx = (F[0]*J[1][1]-F[1]*J[0][1])/det;
-        dy = (J[0][0]*F[1]-J[1][0]*F[0])/det;
-        x += dx; y += dy;
-        if (fabs(dx)+fabs(dy) < EPS) break;
-    }
-    cout <<"Roots: x="<< x <<" y="<< y << endl;
+    vector<vector<double>> A={{4,1,0,1},{1,3,2,0},{0,2,4,0},{1,0,0,2}};
+    vector<double> eigenvalues;
+    findEigenvalues(A,eigenvalues);
+    for(int i=0;i<eigenvalues.size();i++)
+        cout<<"Eigenvalue #"<<i+1<<": "<<eigenvalues[i]<<endl;
     return 0;
 }
